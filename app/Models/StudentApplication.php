@@ -46,17 +46,17 @@ class StudentApplication extends Model
 
     public function student(): BelongsTo
     {
-        return $this->belongsTo(Student::class);
+        return $this->belongsTo(Student::class, 'student_id', 'id');
     }
 
     public function university(): BelongsTo
     {
-        return $this->belongsTo(University::class);
+        return $this->belongsTo(University::class, 'university_id', 'id');
     }
 
     public function course(): BelongsTo
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'course_id', 'id');
     }
 
     public function payments(): HasMany
@@ -125,5 +125,15 @@ class StudentApplication extends Model
     {
         return in_array($this->application_status, ['admitted', 'enrolled']) && 
                $this->visa_status === 'not_started';
+    }
+    
+    public function logs()
+    {
+        return $this->hasMany(ApplicationLog::class)->latest();
+    }
+
+    public function getApplicationStatusAttribute()
+    {
+        return $this->logs()->latest()->first()->status ?? 'draft';
     }
 }

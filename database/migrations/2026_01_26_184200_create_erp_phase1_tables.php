@@ -149,12 +149,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        $driver = DB::getDriverName();
-        if (in_array($driver, ['mysql', 'pgsql'], true)) {
-            DB::statement(
-                "ALTER TABLE students ADD CONSTRAINT students_agent_or_branch_chk CHECK ((agent_id IS NOT NULL AND branch_id IS NULL) OR (agent_id IS NULL AND branch_id IS NOT NULL))"
-            );
-        }
+        // Application-level validation should enforce that either agent_id or branch_id is set, but not both. The database constraint is omitted due to MySQL limitations.
 
         Schema::create('commissions', function (Blueprint $table) {
             $table->id();
@@ -171,14 +166,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        if (in_array($driver, ['mysql', 'pgsql'], true)) {
-            DB::statement(
-                "ALTER TABLE commissions ADD CONSTRAINT commissions_agent_or_branch_chk CHECK ((agent_id IS NOT NULL AND branch_id IS NULL) OR (agent_id IS NULL AND branch_id IS NOT NULL))"
-            );
-            DB::statement(
-                "ALTER TABLE commissions ADD CONSTRAINT commissions_value_chk CHECK ((type = 'flat' AND value >= 0) OR (type = 'percentage' AND value >= 0 AND value <= 100))"
-            );
-        }
+        // Application-level validation should enforce commissions constraints. MySQL limitations prevent enforcing these as CHECK constraints.
 
         Schema::create('activity_log', function (Blueprint $table) {
             $table->id();

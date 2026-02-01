@@ -12,6 +12,14 @@ class Country extends Model
 
     protected $fillable = [
         'name',
+        'code',
+        'currency',
+        'phone_code',
+        'is_active'
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     public function states(): HasMany

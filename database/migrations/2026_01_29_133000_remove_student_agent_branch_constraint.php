@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::table('students', function (Blueprint $table) {
             // Remove the constraint that prevents having both agent and branch
             // Using raw SQL for MariaDB compatibility
-            DB::statement('ALTER TABLE students DROP CONSTRAINT students_agent_or_branch_chk');
+            // DB::statement('ALTER TABLE students DROP CONSTRAINT students_agent_or_branch_chk'); // Disabled: constraint does not exist
         });
     }
 

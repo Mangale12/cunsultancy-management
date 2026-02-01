@@ -19,6 +19,20 @@ use App\Models\StudentApplication;
 
 class Student extends Model
 {
+    /**
+     * Get the route key name for the model.
+     *
+     * @return string
+     */
+    /**
+     * Get the route key name for the model.
+     *
+     * @return string
+     */
+    public function getRouteKeyName()
+    {
+        return 'id';
+    }
     use HasFactory;
 
     protected $fillable = [
@@ -36,7 +50,40 @@ class Student extends Model
         'status',
         'image_path',
         'user_id',
+        'application_status',
+        'application_completed_at',
+        'application_notes'
     ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    // protected $casts = [
+    //     'date_of_birth' => 'date',
+    //     'application_completed_at' => 'datetime',
+    //     'created_at' => 'datetime',
+    //     'updated_at' => 'datetime',
+    // ];
+
+    /**
+     * Get the application status label
+     *
+     * @return string
+     */
+    public function getApplicationStatusLabelAttribute()
+    {
+        $statuses = [
+            'pending' => 'Pending',
+            'in_review' => 'In Review',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            'completed' => 'Completed',
+        ];
+
+        return $statuses[$this->application_status] ?? 'Unknown';
+    }
 
     protected $casts = [
         'date_of_birth' => 'date',
@@ -87,7 +134,7 @@ class Student extends Model
      */
     public function documents(): HasMany
     {
-        return $this->hasMany(Document::class);
+        return $this->hasMany(StudentDocument::class, 'student_id', 'id');
     }
 
     /**

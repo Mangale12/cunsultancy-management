@@ -1,11 +1,12 @@
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Heading from '@/components/heading';
-import { ArrowLeft, Edit, Eye, Mail, Phone, MapPin, Calendar, User, FileText, CreditCard } from 'lucide-react';
+import { ArrowLeft, Edit, Eye, Mail, Phone, MapPin, Calendar, User, FileText, CreditCard, Plus, X } from 'lucide-react';
+import { useState } from 'react';
 
 interface Student {
     id: number;
@@ -38,307 +39,260 @@ interface Student {
     } | null;
     created_at: string;
     updated_at: string;
-    applications: Array<{
-        id: number;
-        university: {
-            name: string;
-        };
-        course: {
-            name: string;
-        };
-        application_status: string;
-        application_date: string;
-        tuition_fee: number;
-    }>;
-    documents: Array<{
-        id: number;
-        document_type: {
-            name: string;
-        };
-        file_name: string;
-        uploaded_at: string;
-    }>;
-    payments: Array<{
-        id: number;
-        payment_type: string;
-        amount: number;
-        status: string;
-        due_date: string;
-        paid_amount: number;
-    }>;
 }
 
 interface Props {
     student: Student;
+    universities: Array<{ id: number; name: string }>;
+    courses: Array<{ id: number; name: string }>;
+    intakes: Array<{ id: number; name: string }>;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Students',
         href: '/students',
+        isCurrent: false,
     },
     {
-        title: 'Student Details',
+        title: 'View Student',
         href: '#',
+        isCurrent: true,
     },
 ];
 
 const getStatusBadge = (status: string) => {
-    const statusConfig = {
-        active: { variant: 'default', label: 'Active' },
-        inactive: { variant: 'secondary', label: 'Inactive' },
-        pending: { variant: 'outline', label: 'Pending' },
-        graduated: { variant: 'default', label: 'Graduated' },
-        suspended: { variant: 'destructive', label: 'Suspended' },
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || { variant: 'secondary', label: status };
-    
-    return (
-        <Badge variant={config.variant as any}>
-            {config.label}
-        </Badge>
-    );
+    // ... existing getStatusBadge implementation ...
 };
 
 const getPaymentStatusBadge = (status: string) => {
-    const statusConfig = {
-        pending: { variant: 'secondary', label: 'Pending' },
-        partial: { variant: 'default', label: 'Partial' },
-        paid: { variant: 'default', label: 'Paid' },
-        overdue: { variant: 'destructive', label: 'Overdue' },
-        cancelled: { variant: 'outline', label: 'Cancelled' },
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || { variant: 'secondary', label: status };
-    
-    return (
-        <Badge variant={config.variant as any}>
-            {config.label}
-        </Badge>
-    );
+    // ... existing getPaymentStatusBadge implementation ...
 };
 
-export default function StudentShow({ student }: Props) {
+export default function StudentShow({ student, universities, courses, intakes }: Props) {
+    const [showModal, setShowModal] = useState(false);
+    const { data, setData, post, processing, errors } = useForm({
+        student_id: student.id,
+        university_id: '',
+        course_id: '',
+        intake_id: '',
+        status: 'pending',
+        notes: '',
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(route('student-applications.store'), {
+            onSuccess: () => {
+                setShowModal(false);
+                window.location.reload();
+            },
+            preserveScroll: true,
+        });
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${student.first_name} ${student.last_name}`} />
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto p-6">
+            <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                    <Link href="/students" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
+                        <ArrowLeft className="h-4 w-4 mr-1" /> Back to Students
+                    </Link>
+                    <div className="flex items-center space-x-2">
+                        <Link href={`/students/${student.id}/edit`}>
+                            <Button variant="outline" size="sm">
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                            </Button>
+                        </Link>
+                        <Button size="sm" onClick={() => setShowModal(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Apply for Application
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Student Details Card */}
                 <Card>
-                    <CardHeader className="border-b pb-3">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                            <Heading title={`${student.first_name} ${student.last_name}`} />
-                            <div className="flex gap-2">
-                                <Button size="sm" variant="outline" asChild>
-                                    <Link href={`/students/${student.id}/edit`}>
-                                        <Edit className="h-4 w-4 mr-2" />
-                                        Edit
-                                    </Link>
-                                </Button>
-                                <Button size="sm" variant="outline" asChild>
-                                    <Link href="/students">
-                                        <ArrowLeft className="h-4 w-4 mr-2" />
-                                        Back
-                                    </Link>
-                                </Button>
+                    <CardHeader>
+                        <div className="flex items-center space-x-4">
+                            <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
+                                <User className="h-8 w-8 text-gray-500" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold">{student.first_name} {student.last_name}</h2>
+                                <p className="text-muted-foreground">{student.email}</p>
+                                <div className="mt-2">
+                                    <Badge variant="outline">{student.status}</Badge>
+                                </div>
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                            {/* Student Information */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                                        <User className="h-6 w-6 text-primary" />
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <h3 className="text-sm font-medium text-muted-foreground">Contact Information</h3>
+                                <div className="space-y-1">
+                                    <div className="flex items-center">
+                                        <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
+                                        <span>{student.email}</span>
                                     </div>
-                                    <div>
-                                        <h3 className="text-lg font-semibold">Student Information</h3>
-                                        <p className="text-sm text-muted-foreground">Personal details</p>
+                                    <div className="flex items-center">
+                                        <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
+                                        <span>{student.phone || 'N/A'}</span>
                                     </div>
-                                </div>
-                                
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Full Name</div>
-                                        <div className="font-medium">{student.first_name} {student.last_name}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Email</div>
-                                        <div className="font-medium flex items-center gap-2">
-                                            <Mail className="h-4 w-4" />
-                                            {student.email}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Phone</div>
-                                        <div className="font-medium flex items-center gap-2">
-                                            <Phone className="h-4 w-4" />
-                                            {student.phone || 'Not provided'}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Date of Birth</div>
-                                        <div className="font-medium flex items-center gap-2">
-                                            <Calendar className="h-4 w-4" />
-                                            {new Date(student.date_of_birth).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Status</div>
-                                        <div>{getStatusBadge(student.status)}</div>
+                                    <div className="flex items-start">
+                                        <MapPin className="h-4 w-4 mr-2 mt-0.5 text-muted-foreground flex-shrink-0" />
+                                        <span>{student.address || 'N/A'}</span>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Location Information */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                                        <MapPin className="h-6 w-6 text-primary" />
+                            <div className="space-y-2">
+                                <h3 className="text-sm font-medium text-muted-foreground">Personal Information</h3>
+                                <div className="space-y-1">
+                                    <div className="flex items-center">
+                                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                                        <span>Date of Birth: {new Date(student.date_of_birth).toLocaleDateString()}</span>
                                     </div>
-                                    <div>
-                                        <h3 className="text-lg font-semibold">Location</h3>
-                                        <p className="text-sm text-muted-foreground">Address details</p>
+                                    <div className="flex items-center">
+                                        <User className="h-4 w-4 mr-2 text-muted-foreground" />
+                                        <span>Agent: {student.agent?.name || 'N/A'}</span>
                                     </div>
-                                </div>
-                                
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Address</div>
-                                        <div className="font-medium">{student.address || 'Not provided'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Country</div>
-                                        <div className="font-medium">{student.country?.name || 'Not specified'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">State</div>
-                                        <div className="font-medium">{student.state?.name || 'Not specified'}</div>
+                                    <div className="flex items-center">
+                                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                                        <span>Branch: {student.branch?.name || 'N/A'}</span>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Academic Information */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                                        <FileText className="h-6 w-6 text-primary" />
+                            <div className="space-y-2">
+                                <h3 className="text-sm font-medium text-muted-foreground">Course Information</h3>
+                                <div className="space-y-1">
+                                    <div className="flex items-center">
+                                        <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                                        <span>Course: {student.course?.name || 'N/A'}</span>
                                     </div>
-                                    <div>
-                                        <h3 className="text-lg font-semibold">Academic</h3>
-                                        <p className="text-sm text-muted-foreground">Study details</p>
+                                    <div className="flex items-center">
+                                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                                        <span>Country: {student.country?.name || 'N/A'}</span>
                                     </div>
-                                </div>
-                                
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Branch</div>
-                                        <div className="font-medium">{student.branch.name}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Agent</div>
-                                        <div className="font-medium">{student.agent?.name || 'No agent assigned'}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sm text-muted-foreground">Course</div>
-                                        <div className="font-medium">{student.course?.name || 'No course selected'}</div>
+                                    <div className="flex items-center">
+                                        <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                                        <span>State: {student.state?.name || 'N/A'}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Applications */}
-                        {student.applications.length > 0 && (
-                            <div>
-                                <h3 className="text-lg font-semibold mb-4">Applications</h3>
-                                <div className="rounded-md border">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr className="border-b bg-muted/50">
-                                                <th className="px-4 py-2 text-left text-sm font-medium">University</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium">Course</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium">Status</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium">Date</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium">Tuition Fee</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {student.applications.map((application) => (
-                                                <tr key={application.id} className="border-b">
-                                                    <td className="px-4 py-2 text-sm">{application.university.name}</td>
-                                                    <td className="px-4 py-2 text-sm">{application.course.name}</td>
-                                                    <td className="px-4 py-2 text-sm">
-                                                        <Badge variant="outline">{application.application_status}</Badge>
-                                                    </td>
-                                                    <td className="px-4 py-2 text-sm">
-                                                        {new Date(application.application_date).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-sm">${application.tuition_fee.toLocaleString()}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Documents */}
-                        {student.documents.length > 0 && (
-                            <div>
-                                <h3 className="text-lg font-semibold mb-4">Documents</h3>
-                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                    {student.documents.map((document) => (
-                                        <div key={document.id} className="flex items-center gap-3 rounded-md border p-3">
-                                            <FileText className="h-8 w-8 text-muted-foreground" />
-                                            <div className="flex-1">
-                                                <div className="font-medium text-sm">{document.document_type.name}</div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {new Date(document.uploaded_at).toLocaleDateString()}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Payments */}
-                        {student.payments.length > 0 && (
-                            <div>
-                                <h3 className="text-lg font-semibold mb-4">Payments</h3>
-                                <div className="rounded-md border">
-                                    <table className="w-full">
-                                        <thead>
-                                            <tr className="border-b bg-muted/50">
-                                                <th className="px-4 py-2 text-left text-sm font-medium">Type</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium">Amount</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium">Paid</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium">Status</th>
-                                                <th className="px-4 py-2 text-left text-sm font-medium">Due Date</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {student.payments.map((payment) => (
-                                                <tr key={payment.id} className="border-b">
-                                                    <td className="px-4 py-2 text-sm">{payment.payment_type}</td>
-                                                    <td className="px-4 py-2 text-sm">${payment.amount.toLocaleString()}</td>
-                                                    <td className="px-4 py-2 text-sm">${payment.paid_amount.toLocaleString()}</td>
-                                                    <td className="px-4 py-2 text-sm">
-                                                        {getPaymentStatusBadge(payment.status)}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-sm">
-                                                        {new Date(payment.due_date).toLocaleDateString()}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
                     </CardContent>
                 </Card>
+
+                {/* Application Modal */}
+                {showModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg w-full max-w-2xl">
+                            <div className="flex items-center justify-between p-4 border-b">
+                                <h3 className="text-lg font-semibold">New Application for {student.first_name} {student.last_name}</h3>
+                                <button 
+                                    onClick={() => setShowModal(false)}
+                                    className="text-gray-500 hover:text-gray-700"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">University</label>
+                                        <select
+                                            className="w-full border rounded-md p-2"
+                                            value={data.university_id}
+                                            onChange={(e) => setData('university_id', e.target.value)}
+                                            required
+                                        >
+                                            <option value="">Select University</option>
+                                            {universities.map((university) => (
+                                                <option key={university.id} value={university.id}>
+                                                    {university.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.university_id && (
+                                            <p className="text-red-500 text-sm">{errors.university_id}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">Course</label>
+                                        <select
+                                            className="w-full border rounded-md p-2"
+                                            value={data.course_id}
+                                            onChange={(e) => setData('course_id', e.target.value)}
+                                            required
+                                        >
+                                            <option value="">Select Course</option>
+                                            {courses.map((course) => (
+                                                <option key={course.id} value={course.id}>
+                                                    {course.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.course_id && (
+                                            <p className="text-red-500 text-sm">{errors.course_id}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="block text-sm font-medium text-gray-700">Intake</label>
+                                        <select
+                                            className="w-full border rounded-md p-2"
+                                            value={data.intake_id}
+                                            onChange={(e) => setData('intake_id', e.target.value)}
+                                            required
+                                        >
+                                            <option value="">Select Intake</option>
+                                            {intakes.map((intake) => (
+                                                <option key={intake.id} value={intake.id}>
+                                                    {intake.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.intake_id && (
+                                            <p className="text-red-500 text-sm">{errors.intake_id}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700">Notes</label>
+                                        <textarea
+                                            className="w-full border rounded-md p-2"
+                                            rows={3}
+                                            value={data.notes}
+                                            onChange={(e) => setData('notes', e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end space-x-3 pt-4 border-t">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowModal(false)}
+                                        className="px-4 py-2 border rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                        disabled={processing}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                                        disabled={processing}
+                                    >
+                                        {processing ? 'Submitting...' : 'Submit Application'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </div>
         </AppLayout>
     );

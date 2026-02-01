@@ -8,64 +8,75 @@ use App\Models\Student;
 use App\Models\University;
 use App\Models\Course;
 use App\Models\StudentPayment;
+use App\Models\Intake;
+use App\Models\ApplicationYear;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class StudentApplicationController extends Controller
 {
-    public function index(Request $request): Response
+    public function create(Request $request, ?Student $student = null)
     {
-        $search = $request->get('search');
-        $status = $request->get('status');
-        $visaStatus = $request->get('visa_status');
-        $university = $request->get('university');
-        $perPage = $request->get('per_page', 10);
-
-        $query = StudentApplication::with(['student', 'university', 'course', 'payments'])
-            ->when($search, function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->whereHas('student', function ($student) use ($search) {
-                        $student->where('first_name', 'like', "%{$search}%")
-                               ->orWhere('last_name', 'like', "%{$search}%")
-                               ->orWhere('email', 'like', "%{$search}%");
-                    });
-                });
-            })
-            ->when($status, function ($query, $status) {
-                $query->byStatus($status);
-            })
-            ->when($visaStatus, function ($query, $visaStatus) {
-                $query->byVisaStatus($visaStatus);
-            })
-            ->when($university, function ($query, $university) {
-                $query->where('university_id', $university);
-            })
-            ->orderBy('created_at', 'desc');
-
-        $applications = $query->paginate($perPage);
-        $universities = University::orderBy('name')->get();
-
-        return Inertia::render('student-applications/index', [
-            'applications' => $applications,
-            'universities' => $universities,
-            'filters' => $request->only(['search', 'status', 'visa_status', 'university', 'per_page']),
+        \Log::info('StudentApplicationController@create called', [
+            'student_id' => $student ? $student->id : null,
+            'request_data' => $request->all()
         ]);
-    }
 
-    public function create(Request $request): Response
-    {
-        $student_id = $request->get('student_id');
-        
-        $students = Student::orderBy('first_name')->get();
-        $universities = University::orderBy('name')->get();
+        $universities = University::orderBy('name')->get(['id', 'name']);
+        $courses = Course::orderBy('name')->get(['id', 'name']);
+        $intakes = Intake::orderBy('name')->get(['id', 'name']);
+        $applicationYears = ApplicationYear::orderBy('year')->get(['id', 'year as name']);
+        $students = Student::orderBy('first_name')->get(['id', 'first_name', 'last_name']);
 
-        return Inertia::render('student-applications/create', [
+        $data = [
+            'universities' => $universities,
+            'courses' => $courses,
+            'intakes' => $intakes,
+            'applicationYears' => $applicationYears,
             'students' => $students,
-            'universities' => $universities,
-            'default_student_id' => $student_id,
+        ];
+
+        if ($student) {
+            $data['student'] = [
+                'id' => $student->id,
+                'name' => $student->first_name . ' ' . $student->last_name,
+            ];
+            $data['default_student_id'] = $student->id;
+        } else if ($request->has('student_id')) {
+            $data['default_student_id'] = $request->get('student_id');
+        }
+
+        \Log::info('Rendering student application form with data', [
+            'universities_count' => $universities->count(),
+            'courses_count' => $courses->count(),
+            'intakes_count' => $intakes->count(),
+            'student' => $data['student'] ?? null
         ]);
+
+        return Inertia::render('student-applications/Create', $data);
     }
+
+    public function index(Request $request)
+    {
+        $query = StudentApplication::all();
+        
+        // --- Statistics ---
+        $stats = [
+            'total_applications' => $query->count(),
+            'total_tuition'      => $query->sum('tuition_fee'),
+            'total_scholarship'  => $query->sum('scholarship_amount'),
+            'visa_approved'      => $query->where('visa_status', 'Approved')->count(),
+        ];
+
+        $applications = $query;
+        $universities = University::orderBy('name')->get();
+
+        return view('admin.application.index', compact('applications', 'universities', 'stats'));
+    }
+
 
     public function store(Request $request)
     {
@@ -98,24 +109,25 @@ class StudentApplicationController extends Controller
             'status' => 'pending',
         ]);
 
-        return redirect()->route('student-applications.show', $application->id)
+        return redirect()->route('students.show', $application->student_id)
             ->with('success', 'Student application created successfully.');
     }
-
-    public function show(StudentApplication $studentApplication): Response
+    public function show($id)
     {
-        $studentApplication->load([
-            'student',
-            'university',
+        $application = StudentApplication::with([
+            'student.documents', // Get student docs through the application
+            'university.country',
             'course',
-            'payments' => function ($query) {
-                $query->orderBy('due_date');
-            }
-        ]);
-
-        return Inertia::render('student-applications/show', [
-            'application' => $studentApplication,
-        ]);
+            'logs.user',        // Needed for the status timeline
+            'payments' => fn($q) => $q->orderBy('due_date')
+        ])->findOrFail($id);
+    
+        // Fetch dropdown data for the "Apply More" modal
+        $universities = \App\Models\University::all();
+        $intakes = \App\Models\Intake::all();
+        $courses = \App\Models\Course::all();
+    
+        return view('admin.application.show', compact('application', 'universities', 'intakes', 'courses'));
     }
 
     public function edit(StudentApplication $studentApplication): Response
@@ -126,7 +138,7 @@ class StudentApplicationController extends Controller
         $universities = University::orderBy('name')->get();
         $courses = Course::where('university_id', $studentApplication->university_id)->get();
 
-        return Inertia::render('student-applications/edit', [
+        return view('admin.applications.edit', [
             'application' => $studentApplication,
             'students' => $students,
             'universities' => $universities,
@@ -156,7 +168,7 @@ class StudentApplicationController extends Controller
 
         $studentApplication->update($validated);
 
-        return redirect()->route('student-applications.show', $studentApplication->id)
+        return redirect()->route('admin.student-applications.show', $studentApplication->id)
             ->with('success', 'Student application updated successfully.');
     }
 
@@ -168,16 +180,53 @@ class StudentApplicationController extends Controller
             ->with('success', 'Student application deleted successfully.');
     }
 
-    public function updateStatus(Request $request, StudentApplication $studentApplication)
+    // public function updateStatus(Request $request, StudentApplication $studentApplication)
+    // {
+    //     $validated = $request->validate([
+    //         'application_status' => 'required|in:draft,submitted,under_review,admitted,rejected,enrolled,withdrawn,deferred',
+    //         'visa_status' => 'required|in:not_started,documents_collected,application_submitted,interview_scheduled,interview_completed,approved,rejected,issued',
+    //         'pre_departure_status' => 'required|in:not_started,documents_ready,flight_booked,accommodation_arranged,insurance_done,ready',
+    //     ]);
+
+    //     $studentApplication->update($validated);
+
+    //     return back()->with('success', 'Application status updated successfully.');
+    // }
+
+
+    public function updateStatus(Request $request, $id)
     {
+        // 1. Validate the incoming data
         $validated = $request->validate([
-            'application_status' => 'required|in:draft,submitted,under_review,admitted,rejected,enrolled,withdrawn,deferred',
-            'visa_status' => 'required|in:not_started,documents_collected,application_submitted,interview_scheduled,interview_completed,approved,rejected,issued',
-            'pre_departure_status' => 'required|in:not_started,documents_ready,flight_booked,accommodation_arranged,insurance_done,ready',
+            'status' => 'required|string|max:255',
+            'comment' => 'nullable|string|max:1000',
         ]);
 
-        $studentApplication->update($validated);
+        $application = StudentApplication::findOrFail($id);
 
-        return back()->with('success', 'Application status updated successfully.');
+        try {
+            // 2. Wrap in a transaction for data integrity
+            DB::transaction(function () use ($application, $validated) {
+                
+                // Update the current status on the application
+                $application->update([
+                    'status' => $validated['status']
+                ]);
+
+                // 3. Create the log entry
+                // Assumes relationship: $application->logs()
+                $application->logs()->create([
+                    'user_id' => Auth::id(), // Person making the change
+                    'status'  => $validated['status'],
+                    'comment' => $validated['comment'] ?? 'Status updated manually.',
+                ]);
+            });
+
+            return back()->with('success', 'Application status updated and logged successfully.');
+
+        } catch (\Exception $e) {
+            dd($e);
+            return back()->with('error', 'Failed to update status: ' . $e->getMessage());
+        }
     }
 }
