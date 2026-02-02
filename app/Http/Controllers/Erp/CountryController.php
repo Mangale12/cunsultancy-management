@@ -86,5 +86,40 @@ class CountryController extends Controller
         }
     }
 
+    public function show(Country $country)
+    {
+        // Load country with related data
+        $country->load(['states', 'students']);
+        
+        return view('admin/countries/show', compact('country'));
+    }
+
+    public function destroy(Country $country)
+    {
+        try {
+            // Check if country has states or students
+            if ($country->states()->exists()) {
+                return back()
+                    ->with('error', 'Cannot delete country. It has associated states.');
+            }
+            
+            if ($country->students()->exists()) {
+                return back()
+                    ->with('error', 'Cannot delete country. It has associated students.');
+            }
+
+            $country->delete();
+
+            return redirect()
+                ->route('countries.index')
+                ->with('success', 'Country deleted successfully');
+        } catch (\Exception $e) {
+            Log::error('Error deleting country: ' . $e->getMessage());
+
+            return back()
+                ->with('error', 'Failed to delete country. Please try again.');
+        }
+    }
+
    
 }

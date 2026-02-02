@@ -85,6 +85,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('dashboard', [\App\Http\Controllers\AdminController::class, 'index'])->name('dashboard');
 
+    // AJAX route for getting states by country
+    Route::get('get-states/{country}', [\App\Http\Controllers\Erp\BranchController::class, 'getStates'])->name('get.states');
+
+    // AJAX route for getting courses by university
+    Route::get('get-courses-by-university/{university}', function($university) {
+        $universityModel = \App\Models\University::findOrFail($university);
+        $courses = $universityModel->courses()->orderBy('name')->get();
+        return response()->json($courses);
+    })->name('get.courses.by.university');
+
     Route::resource('student-applications', StudentApplicationController::class);
 });
 

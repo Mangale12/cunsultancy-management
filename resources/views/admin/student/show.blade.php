@@ -1,177 +1,429 @@
 @extends('layouts.app')
 
-@section('content')
-<div class="container-fluid px-4 bg-light min-vh-100">
-    <div class="d-flex justify-content-between align-items-center py-3">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="#">Partners</a></li>
-                <li class="breadcrumb-item"><a href="#">Student</a></li>
-                <li class="breadcrumb-item active">{{ $student->id }}</li>
-            </ol>
-        </nav>
-        <a href="{{ route('students.index') }}" class="btn btn-dark btn-sm rounded-pill px-3">
-            <i data-feather="arrow-left" class="me-1"></i> Go Back
-        </a>
-    </div>
+@section('title', $student->first_name . ' ' . $student->last_name)
 
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <h5 class="fw-bold mb-4">{{ $student->name }}</h5>
-            <div class="row g-3 text-uppercase small">
-                <div class="col-md-2">
-                    <label class="text-muted d-block">Name</label>
-                    <span class="fw-bold">{{ $student->name }}</span>
-                </div>
-                <div class="col-md-2">
-                    <label class="text-muted d-block">Date of Birth</label>
-                    <span class="fw-bold">{{ $student->date_of_birth }}</span>
-                </div>
-                <div class="col-md-2">
-                    <label class="text-muted d-block">Passport Number</label>
-                    <span class="fw-bold">{{ $student->passport_number ?? 'N/A' }}</span>
-                </div>
-                <div class="col-md-2">
-                    <label class="text-muted d-block">Email</label>
-                    <span class="fw-bold text-lowercase">{{ $student->email }}</span>
-                </div>
-                <div class="col-md-2">
-                    <label class="text-muted d-block">Mobile Number</label>
-                    <span class="fw-bold">{{ $student->phone }}</span>
-                </div>
-                <div class="col-md-2">
-                    <label class="text-muted d-block">Nationality</label>
-                    <span class="fw-bold">{{ $student->country->name ?? 'Nepal' }}</span>
-                </div>
-                <div class="col-md-2 mt-3">
-                    <label class="text-muted d-block">State</label>
-                    <span class="fw-bold">{{ $student->state->name ?? 'Eastern' }}</span>
-                </div>
-                <div class="col-md-2 mt-3">
-                    <label class="text-muted d-block">Study Country</label>
-                    <span class="fw-bold">United Kingdom</span>
-                </div>
-                <div class="col-md-2 mt-3">
-                    <label class="text-muted d-block">Created At</label>
-                    <span class="fw-bold">{{ $student->created_at }}</span>
-                </div>
-                <div class="col-md-2 mt-3">
-                    <label class="text-muted d-block">Status</label>
-                    @php
-                        $statusColors = [
-                            'pending' => 'warning',
-                            'in_review' => 'info',
-                            'approved' => 'success',
-                            'rejected' => 'danger',
-                            'completed' => 'success'
-                        ];
-                        $statusColor = $statusColors[$student->application_status] ?? 'secondary';
-                    @endphp
-                    <span class="badge bg-{{ $statusColor }}">
-                        {{ $student->application_status_label }}
-                    </span>
-                    @if($student->application_completed_at)
-                        <div class="small text-muted mt-1">
-                            Completed: {{ $student->application_completed_at->format('M d, Y') }}
-                        </div>
-                    @endif
-                </div>
+@section('content')
+<!-- Success/Error Messages -->
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i data-feather="check-circle" class="me-2"></i>
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i data-feather="alert-circle" class="me-2"></i>
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
+<x-page-header 
+    title="{{ $student->first_name }} {{ $student->last_name }}"
+    subtitle="View student details and manage applications, documents, and academic records."
+    :actions="
+        '<a href=\"' . route('students.index') . '\" class=\"btn btn-outline-secondary me-2\">
+            <i data-feather=\"arrow-left\" class=\"me-2\"></i> Back to Students
+        </a>
+        <a href=\"' . route('students.edit', $student->id) . '\" class=\"btn btn-primary\">
+            <i data-feather=\"edit-2\" class=\"me-2\"></i> Edit Student
+        </a>'
+    "
+/>
+
+    <!-- Student Details -->
+<div class="row g-4">
+    <div class="col-lg-8">
+        <!-- Basic Information -->
+        <x-card>
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">
+                    <i data-feather="user" class="me-2"></i>
+                    Personal Information
+                </h5>
             </div>
-            
-            <div class="mt-4 d-flex justify-content-between align-items-center">
-                <div>
-                    <button class="btn btn-success btn-sm me-2">Assessment Requested</button>
-                    <button class="btn btn-dark btn-sm" data-bs-toggle="modal" data-bs-target="#applyApplicationModal">
-                        Apply More Application
-                    </button>
-                </div>
-                
-                <div class="dropdown
-                    <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="statusDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        Update Application Status
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 300px;">
-                        <form action="{{ route('students.complete-application', $student) }}" method="POST">
-                            @csrf
-                            <div class="mb-3">
-                                <label for="status" class="form-label small text-muted">Status</label>
-                                <select name="status" id="status" class="form-select form-select-sm" required>
-                                    <option value="pending" {{ $student->application_status === 'pending' ? 'selected' : '' }}>Pending</option>
-                                    <option value="in_review" {{ $student->application_status === 'in_review' ? 'selected' : '' }}>In Review</option>
-                                    <option value="approved" {{ $student->application_status === 'approved' ? 'selected' : '' }}>Approved</option>
-                                    <option value="rejected" {{ $student->application_status === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                    <option value="completed" {{ $student->application_status === 'completed' ? 'selected' : '' }}>Completed</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="notes" class="form-label small text-muted">Notes</label>
-                                <textarea name="notes" id="notes" rows="3" class="form-control form-control-sm" placeholder="Add any notes about this status change...">{{ old('notes', $student->application_notes) }}</textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-sm w-100">Update Status</button>
-                        </form>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Full Name</label>
+                        <p class="fw-semibold">{{ $student->first_name }} {{ $student->last_name }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Email</label>
+                        <p class="fw-semibold">
+                            <a href="mailto:{{ $student->email }}" class="text-decoration-none">{{ $student->email }}</a>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Phone</label>
+                        <p class="fw-semibold">
+                            @if($student->phone)
+                                <a href="tel:{{ $student->phone }}">{{ $student->phone }}</a>
+                            @else
+                                <span class="text-muted">Not provided</span>
+                            @endif
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Date of Birth</label>
+                        <p class="fw-semibold">
+                            @if($student->date_of_birth)
+                                {{ $student->date_of_birth->format('M d, Y') }}
+                            @else
+                                <span class="text-muted">Not provided</span>
+                            @endif
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Passport Number</label>
+                        <p class="fw-semibold">
+                            @if($student->passport_number)
+                                {{ $student->passport_number }}
+                            @else
+                                <span class="text-muted">Not provided</span>
+                            @endif
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Country</label>
+                        <p class="fw-semibold">
+                            @if($student->country)
+                                <a href="{{ route('countries.show', $student->country->id) }}" class="text-decoration-none">
+                                    <i data-feather="globe" class="me-1"></i>{{ $student->country->name }}
+                                </a>
+                            @else
+                                <span class="text-muted">Not assigned</span>
+                            @endif
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">State</label>
+                        <p class="fw-semibold">
+                            @if($student->state)
+                                <a href="{{ route('states.show', $student->state->id) }}" class="text-decoration-none">
+                                    <i data-feather="map-pin" class="me-1"></i>{{ $student->state->name }}
+                                </a>
+                            @else
+                                <span class="text-muted">Not assigned</span>
+                            @endif
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Branch</label>
+                        <p class="fw-semibold">
+                            @if($student->branch)
+                                <a href="{{ route('branches.show', $student->branch->id) }}" class="text-decoration-none">
+                                    <i data-feather="briefcase" class="me-1"></i>{{ $student->branch->name }}
+                                </a>
+                            @else
+                                <span class="text-muted">Not assigned</span>
+                            @endif
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Agent</label>
+                        <p class="fw-semibold">
+                            @if($student->agent)
+                                <a href="{{ route('agents.show', $student->agent->id) }}" class="text-decoration-none">
+                                    <i data-feather="user-check" class="me-1"></i>{{ $student->agent->name }}
+                                </a>
+                            @else
+                                <span class="text-muted">Not assigned</span>
+                            @endif
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Application Status</label>
+                        <p class="fw-semibold">
+                            @php
+                                $statusColors = [
+                                    'pending' => 'warning',
+                                    'in_review' => 'info',
+                                    'approved' => 'success',
+                                    'rejected' => 'danger',
+                                    'completed' => 'success',
+                                    'secondary' => 'secondary'
+                                ];
+                                $statusColor = $statusColors[$student->application_status] ?? 'secondary';
+                            @endphp
+                            <span class="badge bg-{{ $statusColor }}">
+                                {{ $student->application_status_label }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted">Created At</label>
+                        <p class="fw-semibold">{{ $student->created_at->format('M d, Y') }}</p>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+        </x-card>
 
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    @endif
-
-    <div class="mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h6 class="fw-bold text-primary mb-0">Applications</h6>
-            <div class="text-muted small">
-                @if($student->application_completed_at)
-                    Last updated: {{ $student->application_completed_at->diffForHumans() }}
-                @endif
-            </div>
-        </div>
-        <div class="table-responsive shadow-sm bg-white rounded">
-            <table class="table table-bordered table-sm align-middle mb-0 small">
-                <thead class="bg-primary text-white">
-                    <tr>
-                        <th class="ps-2">S.N.</th>
-                        <th>Upload Document</th>
-                        <th>Course Name</th>
-                        <th>University</th>
-                        <th>Country</th>
-                        <th>Intake</th>
-                        <th>Current Status</th>
-                        <th>Created On</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($student->applications as $key => $application)
-                    <tr>
-                        <td class="ps-2">{{ $key + 1 }}.</td>
-                        <td><button class="btn btn-primary btn-xs py-0 px-1" style="font-size: 10px;">Upload Document</button></td>
-                        <td class="text-primary fw-bold"><a href="{{ route('student-apply-application.show', $application->id)}}">{{ $application->course->name ?? 'N/A' }}</a></td>
-                        <td>{{ $application->university->name ?? 'N/A' }}</td>
-                        <td>{{ $application->university->country->name ?? 'N/A' }}</td>
-                        <td>{{ $application->intake->name ?? 'N/A' }}</td>
-                        <td class="text-primary">{{ $application->application_status_label ?? 'N/A' }}</td>
-                        <td>{{ $application->created_at ?? 'N/A' }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="mb-4">
-        <div class="mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold text-primary mb-0">Documents</h6>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
-                    <i data-feather="upload-cloud" class="me-1" style="width: 14px;"></i> Upload New Document
+        <!-- Applications -->
+        <x-card class="mt-4">
+            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i data-feather="book-open" class="me-2"></i>
+                    Applications ({{ $student->applications->count() }})
+                </h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#applyApplicationModal">
+                    <i data-feather="plus" class="me-1"></i> Apply More Application
                 </button>
             </div>
-        </div>
+            <div class="card-body">
+                @if($student->applications->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Course</th>
+                                    <th>University</th>
+                                    <th>Country</th>
+                                    <th>Intake</th>
+                                    <th>Status</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($student->applications as $application)
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle bg-primary bg-opacity-10 p-2 me-3">
+                                                <i data-feather="book" class="text-primary" style="width: 14px; height: 14px;"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold">{{ $application->course->name ?? 'N/A' }}</div>
+                                                <small class="text-muted">ID: #APP-{{ str_pad($application->id, 3, '0', STR_PAD_LEFT) }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if($application->university)
+                                            <span class="badge bg-info">{{ $application->university->name }}</span>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($application->university && $application->university->country)
+                                            <span class="badge bg-secondary">{{ $application->university->country->name }}</span>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($application->intake)
+                                            <span class="badge bg-success">{{ $application->intake->name }}</span>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ $statusColors[$application->status ?? 'secondary'] }}">
+                                            {{ $application->status_label ?? 'Unknown' }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a href="#" class="btn btn-sm btn-outline-primary">
+                                                <i data-feather="eye" style="width: 14px; height: 14px;"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <i data-feather="book-open" class="text-muted" style="width: 48px; height: 48px;"></i>
+                        <h5 class="mt-3 mb-2">No applications found</h5>
+                        <p class="text-muted mb-3">This student hasn't submitted any applications yet.</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#applyApplicationModal">
+                            <i data-feather="plus" class="me-2"></i>Apply First Application
+                        </button>
+                    </div>
+                @endif
+            </div>
+        </x-card>
+
+        <!-- Documents -->
+        <x-card class="mt-4">
+            <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i data-feather="file-text" class="me-2"></i>
+                    Documents ({{ $student->documents->count() }})
+                </h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
+                    <i data-feather="upload-cloud" class="me-1"></i> Upload Document
+                </button>
+            </div>
+            <div class="card-body">
+                @if($student->documents->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Document Type</th>
+                                    <th>File Name</th>
+                                    <th>Uploaded</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($student->documents as $document)
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ $document->title }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="small text-truncate" style="max-width: 200px;">
+                                            {{ $document->file_name }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ $document->created_at->format('M d, Y') }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a href="{{ asset('storage/' . $document->file_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <i data-feather="eye" style="width: 14px; height: 14px;"></i>
+                                            </a>
+                                            <a href="{{ asset('storage/' . $document->file_path) }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                                <i data-feather="download" style="width: 14px; height: 14px;"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-4">
+                        <i data-feather="file-text" class="text-muted" style="width: 48px; height: 48px;"></i>
+                        <h5 class="mt-3 mb-2">No documents found</h5>
+                        <p class="text-muted mb-3">This student hasn't uploaded any documents yet.</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
+                            <i data-feather="upload-cloud" class="me-2"></i>Upload First Document
+                        </button>
+                    </div>
+                @endif
+            </div>
+        </x-card>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Student Profile Card -->
+        <x-card>
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">
+                    <i data-feather="user" class="me-2"></i>
+                    Student Profile
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <img src="{{ $student->image_path ? asset('storage/'.$student->image_path) : 'https://ui-avatars.com/api/?name='.urlencode($student->first_name.' '.$student->last_name).'&background=0d6efd&color=fff' }}" 
+                         class="rounded-circle mx-auto d-block" width="80" height="80" alt="{{ $student->first_name }} {{ $student->last_name }}">
+                </div>
+                <h4 class="mb-1">{{ $student->first_name }} {{ $student->last_name }}</h4>
+                <p class="text-muted mb-3">{{ $student->email }}</p>
+                
+                <div class="mb-3">
+                    <span class="badge bg-{{ $statusColors[$student->application_status] ?? 'secondary' }} fs-6">
+                        {{ $student->application_status_label }}
+                    </span>
+                </div>
+                
+                <div class="row g-2">
+                    <div class="col-6">
+                        <x-card class="text-center">
+                            <div class="py-3">
+                                <i data-feather="book-open" class="text-primary mb-2" style="width: 24px; height: 24px;"></i>
+                                <h5 class="mb-1">{{ $student->applications->count() }}</h5>
+                                <small class="text-muted">Applications</small>
+                            </div>
+                        </x-card>
+                    </div>
+                    <div class="col-6">
+                        <x-card class="text-center">
+                            <div class="py-3">
+                                <i data-feather="file-text" class="text-success mb-2" style="width: 24px; height: 24px;"></i>
+                                <h5 class="mb-1">{{ $student->documents->count() }}</h5>
+                                <small class="text-muted">Documents</small>
+                            </div>
+                        </x-card>
+                    </div>
+                </div>
+            </div>
+        </x-card>
+
+        <!-- Quick Actions -->
+        <x-card class="mt-4">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">
+                    <i data-feather="zap" class="me-2"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ route('students.edit', $student->id) }}" class="btn btn-outline-primary">
+                        <i data-feather="edit-2" class="me-2"></i>Edit Student
+                    </a>
+                    <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#applyApplicationModal">
+                        <i data-feather="plus" class="me-2"></i>Apply Application
+                    </button>
+                    <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#uploadDocumentModal">
+                        <i data-feather="upload-cloud" class="me-2"></i>Upload Document
+                    </button>
+                    <form action="{{ route('students.destroy', $student->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this student? This action cannot be undone.')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            <i data-feather="trash-2" class="me-2"></i>Delete Student
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </x-card>
+
+        <!-- Status Update -->
+        <x-card class="mt-4">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">
+                    <i data-feather="settings" class="me-2"></i>
+                    Update Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ route('students.complete-application', $student) }}" method="POST">
+                    @csrf
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Application Status</label>
+                        <select name="status" id="status" class="form-select" required>
+                            <option value="pending" {{ $student->application_status === 'pending' ? 'selected' : '' }}>Pending</option>
+                            <option value="in_review" {{ $student->application_status === 'in_review' ? 'selected' : '' }}>In Review</option>
+                            <option value="approved" {{ $student->application_status === 'approved' ? 'selected' : '' }}>Approved</option>
+                            <option value="rejected" {{ $student->application_status === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                            <option value="completed" {{ $student->application_status === 'completed' ? 'selected' : '' }}>Completed</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea name="notes" id="notes" rows="3" class="form-control" placeholder="Add any notes about this status change...">{{ old('notes', $student->application_notes) }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Update Status</button>
+                </form>
+            </div>
+        </x-card>
+    </div>
+</div>
         <div class="table-responsive shadow-sm bg-white rounded">
             @if($errors->any())
             <div class="alert alert-danger">
@@ -218,11 +470,12 @@
     </div>
 </div>
 
+<!-- Apply Application Modal -->
 <div class="modal fade" id="applyApplicationModal" tabindex="-1" aria-labelledby="applyApplicationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header border-0 pb-0">
-                <h6 class="modal-title text-primary fw-bold" id="applyApplicationModalLabel">Kindly Select Your Priority University</h6>
+                <h6 class="modal-title text-primary fw-bold" id="applyApplicationModalLabel">Apply for Course</h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -274,13 +527,15 @@
 
                     <div class="d-flex justify-content-between mt-4">
                         <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success btn-sm px-4">Save</button>
+                        <button type="submit" class="btn btn-success btn-sm px-4">Save Application</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Upload Document Modal -->
 <div class="modal fade" id="uploadDocumentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen">
         <div class="modal-content">
@@ -290,40 +545,39 @@
             </div>
             <form id="documentUploadForm" method="POST" action="{{ route('students.upload-document', $student->id) }}" enctype="multipart/form-data">
                 @csrf
-                <div class="modal-body">
-                    <div id="uploadAlert" class="alert d-none"></div>
-                    
-                    <input type="hidden" name="student_id" value="{{ $student->id }}">
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">Document Title <span class="text-danger">*</span></label>
-                                <input type="text" name="title" class="form-control form-control-sm" placeholder="e.g. Passport Copy" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label small fw-bold">Document Type <span class="text-danger">*</span></label>
-                                <select class="form-select form-select-sm" name="document_type_id" required>
-                                    <option value="" selected disabled>Select Type</option>
-                                   @foreach($documentTypes as $documentType)
-                                        <option value="{{ $documentType->id }}">{{ $documentType->label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                <div id="uploadAlert" class="alert d-none"></div>
+                
+                <input type="hidden" name="student_id" value="{{ $student->id }}">
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Document Title <span class="text-danger">*</span></label>
+                            <input type="text" name="title" class="form-control form-control-sm" placeholder="e.g. Passport Copy" required>
                         </div>
                     </div>
-
-                   <div class="mb-3">
-                        <label class="form-label small fw-bold">Document File <span class="text-danger">*</span></label>
-                        <input type="file" name="document_file" class="form-control form-control-sm" required>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Document Type <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" name="document_type_id" required>
+                                <option value="" selected disabled>Select Type</option>
+                               @foreach($documentTypes as $documentType)
+                                    <option value="{{ $documentType->id }}">{{ $documentType->label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
+                </div>
 
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold">Notes (Optional)</label>
-                        <textarea name="notes" class="form-control form-control-sm" rows="3" placeholder="Any details about this file..."></textarea>
-                    </div>
+               <div class="mb-3">
+                    <label class="form-label small fw-bold">Document File <span class="text-danger">*</span></label>
+                    <input type="file" name="document_file" class="form-control form-control-sm" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Notes (Optional)</label>
+                    <textarea name="notes" class="form-control form-control-sm" rows="3" placeholder="Any details about this file..."></textarea>
+                </div>
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Cancel</button>
@@ -337,178 +591,14 @@
     </div>
 </div>
 
-@push('scripts')
-<script>
-$(document).ready(function() {
-    const form = $('#documentUploadForm');
-    const alertBox = $('#uploadAlert');
-    const fileInput = $('#documentFile');
-    const dropZone = $('#dropZone');
-    const browseBtn = $('#browseBtn');
-    const uploadBtn = $('#uploadBtn');
-    const btnText = $('.btn-text');
-    const spinner = $('.spinner-border');
-    const fileInfo = $('#fileInfo');
-
-    // Handle file selection
-    browseBtn.on('click', function() {
-        fileInput.click();
-    });
-
-    // Handle file selection via input
-    fileInput.on('change', function() {
-        updateFileInfo(this.files[0]);
-    });
-
-    // Handle drag and drop
-    dropZone.on('dragover', function(e) {
-        e.preventDefault();
-        dropZone.addClass('border-primary bg-light');
-    });
-
-    dropZone.on('dragleave', function(e) {
-        e.preventDefault();
-        dropZone.removeClass('border-primary bg-light');
-    });
-
-    dropZone.on('drop', function(e) {
-        e.preventDefault();
-        dropZone.removeClass('border-primary bg-light');
-        
-        const files = e.originalEvent.dataTransfer.files;
-        if (files.length) {
-            fileInput[0].files = files;
-            updateFileInfo(files[0]);
-        }
-    });
-
-    // Update file info display
-    function updateFileInfo(file) {
-        if (file) {
-            const fileSize = (file.size / (1024 * 1024)).toFixed(2);
-            fileInfo.html(`
-                <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded">
-                    <div class="d-flex align-items-center">
-                        <i data-feather="file" class="me-2"></i>
-                        <span>${file.name}</span>
-                    </div>
-                    <small class="text-muted">${fileSize} MB</small>
-                </div>
-            `);
-            feather.replace();
-        }
-    }
-
-    // Handle form submission
-    form.on('submit', function(e) {
-        e.preventDefault();
-        
-        // Validate form
-        if (!fileInput[0].files.length) {
-            showAlert('Please select a file to upload.', 'danger');
-            return;
-        }
-
-        // Show loading state
-        uploadBtn.prop('disabled', true);
-        spinner.removeClass('d-none');
-        btnText.text('Uploading...');
-
-        // Create FormData object
-        const formData = new FormData(this);
-
-        // Submit via AJAX
-        $.ajax({
-            url: '{{ route('student-documents.store') }}',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                showAlert('Document uploaded successfully!', 'success');
-                form[0].reset();
-                fileInfo.empty();
-                
-                // Reload the page after 1.5 seconds to show the new document
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            },
-            error: function(xhr) {
-                let errorMessage = 'An error occurred while uploading the document.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                } else if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-                    // Handle validation errors
-                    const errors = [];
-                    $.each(xhr.responseJSON.errors, function(key, value) {
-                        errors.push(value[0]);
-                    });
-                    errorMessage = errors.join('<br>');
-                }
-                showAlert(errorMessage, 'danger');
-            },
-            complete: function() {
-                // Reset button state
-                uploadBtn.prop('disabled', false);
-                spinner.addClass('d-none');
-                btnText.text('Upload Document');
-            }
-        });
-    });
-
-    // Show alert message
-    function showAlert(message, type) {
-        alertBox.removeClass('d-none alert-success alert-danger')
-               .addClass(`alert-${type}`)
-               .html(`
-                   <div class="d-flex align-items-center">
-                       <i data-feather="${type === 'success' ? 'check-circle' : 'alert-circle'}" class="me-2"></i>
-                       <span>${message}</span>
-                   </div>
-               `);
-        feather.replace();
-        
-        // Auto-hide after 5 seconds
-        setTimeout(() => {
-            alertBox.fadeOut(300, function() {
-                $(this).addClass('d-none').show();
-            });
-        }, 5000);
-    }
-});
-</script>
-<style>
-.file-upload-wrapper {
-    cursor: pointer;
-}
-.border-dashed {
-    border-style: dashed !important;
-}
-#dropZone:hover {
-    background-color: #f8f9fa !important;
-}
-.modal-fullscreen {
-    max-width: 95%;
-    margin: 1.75rem auto;
-}
-</style>
-@endpush
-<style>
-    .bg-primary { background-color: #0025cc !important; }
-    .text-primary { color: #0025cc !important; }
-    .btn-primary { background-color: #0025cc; border: none; }
-    .table-bordered > :not(caption) > * > * { border-width: 0 1px; border-color: #dee2e6; }
-    .breadcrumb-item + .breadcrumb-item::before { content: ">"; }
-    .btn-xs { padding: 1px 5px; font-size: 11px; }
-</style>
+@endsection
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Feather Icons
+    feather.replace();
+    
     // When University is selected in the modal
     $('#modal_university').on('change', function() {
         var uniId = $(this).val();
@@ -518,7 +608,7 @@ $(document).ready(function() {
 
         if(uniId) {
             $.ajax({
-                url: '/get-courses-by-university/' + uniId, // Create this route in web.php
+                url: '/get-courses-by-university/' + uniId,
                 type: "GET",
                 success: function(data) {
                     courseSelect.prop('disabled', false).empty();
@@ -533,4 +623,3 @@ $(document).ready(function() {
 });
 </script>
 @endpush
-@endsection

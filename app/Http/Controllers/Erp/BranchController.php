@@ -34,6 +34,7 @@ class BranchController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|max:255',
+            'code' => 'required|max:50|unique:branches',
             'country_id' => 'required',
             'state_id' => 'required',
             'email' => 'nullable|email',
@@ -45,6 +46,14 @@ class BranchController extends Controller
         return redirect()->route('branches.index')->with('success', 'Branch created successfully.');
     }
 
+    public function show(Branch $branch)
+    {
+        // Load branch with related data
+        $branch->load(['country', 'state', 'employees', 'students', 'agents']);
+        
+        return view('admin.branches.show', compact('branch'));
+    }
+
     public function edit(Branch $branch)
     {
         $countries = Country::all();
@@ -54,7 +63,16 @@ class BranchController extends Controller
 
     public function update(Request $request, Branch $branch)
     {
-        $branch->update($request->all());
+        $validated = $request->validate([
+            'name' => 'required|max:255',
+            'code' => 'required|max:50|unique:branches,code,' . $branch->id,
+            'country_id' => 'required',
+            'state_id' => 'required',
+            'email' => 'nullable|email',
+            'is_active' => 'boolean'
+        ]);
+
+        $branch->update($validated);
         return redirect()->route('branches.index')->with('success', 'Branch updated successfully.');
     }
 
@@ -189,70 +207,38 @@ class BranchController extends Controller
     //     return Redirect::route('branches.index')->with('success', 'Branch updated successfully.');
     // }
 
-    // /**
-    //  * Remove the specified resource from storage.
-    //  */
-    // public function destroy(Request $request, Branch $branch): RedirectResponse
-    // {
-    //     $this->authorize('delete', $branch);
-
-    //     try {
-    //         // Check if branch exists
-    //         if (!$branch) {
-    //             Log::error("Branch not found for deletion");
-    //             return Redirect::route('branches.index')->with('error', 'Branch not found.');
-    //         }
-
-    //         // Log the branch ID being deleted
-    //         Log::info("Attempting to delete branch ID: {$branch->id}");
-
-    //         // Check for related records
-    //         $relatedCount = 0;
-    //         $relatedModels = [];
-
-    //         // Check employees
-    //         $employeeCount = $branch->employees()->count();
-    //         if ($employeeCount > 0) {
-    //             $relatedCount += $employeeCount;
-    //             $relatedModels[] = "{$employeeCount} employees";
-    //         }
-
-    //         // Check students
-    //         $studentCount = $branch->students()->count();
-    //         if ($studentCount > 0) {
-    //             $relatedCount += $studentCount;
-    //             $relatedModels[] = "{$studentCount} students";
-    //         }
-
-    //         if ($relatedCount > 0) {
-    //             $relatedList = implode(', ', $relatedModels);
-    //             Log::warning("Cannot delete branch {$branch->id}: has {$relatedCount} related records ({$relatedList})");
-    //             return Redirect::route('branches.index')
-    //                 ->with('error', "Cannot delete branch '{$branch->name}' because it has {$relatedCount} related records ({$relatedList}). Please delete or reassign these records first.");
-    //         }
-
-    //         // Delete the branch
-    //         $branchName = $branch->name;
-    //         $branchId = $branch->id;
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Request $request, Branch $branch)
+    {
+        try {
+            // Check if branch has related records
+            if ($branch->employees()->exists()) {
+                return back()
+                    ->with('error', 'Cannot delete branch. It has associated employees.');
+            }
             
-    //         if ($branch->delete()) {
-    //             Log::info("Successfully deleted branch ID: {$branchId} ({$branchName})");
-    //             return Redirect::route('branches.index')
-    //                 ->with('success', "Branch '{$branchName}' deleted successfully.");
-    //         } else {
-    //             Log::error("Failed to delete branch ID: {$branchId}");
-    //             return Redirect::route('branches.index')
-    //                 ->with('error', 'Failed to delete branch. Please try again.');
-    //         }
+            if ($branch->agents()->exists()) {
+                return back()
+                    ->with('error', 'Cannot delete branch. It has associated agents.');
+            }
+            
+            if ($branch->students()->exists()) {
+                return back()
+                    ->with('error', 'Cannot delete branch. It has associated students.');
+            }
 
-    //     } catch (\Exception $e) {
-    //         Log::error("Error deleting branch: " . $e->getMessage(), [
-    //             'branch_id' => $branch->id ?? 'unknown',
-    //             'exception' => $e,
-    //         ]);
+            $branch->delete();
 
-    //         return Redirect::route('branches.index')
-    //             ->with('error', 'An error occurred while deleting the branch. Please try again.');
-    //     }
-    // }
+            return redirect()
+                ->route('branches.index')
+                ->with('success', 'Branch deleted successfully');
+        } catch (\Exception $e) {
+            Log::error('Error deleting branch: ' . $e->getMessage());
+
+            return back()
+                ->with('error', 'Failed to delete branch. Please try again.');
+        }
+    }
 }

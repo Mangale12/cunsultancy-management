@@ -129,9 +129,14 @@
                 </table>
             </div>
 
-            @if($documents->hasPages())
-                <div class="d-flex justify-content-center mt-4">
-                    {{ $documents->links() }}
+            @if(method_exists($documents, 'hasPages') && $documents->hasPages())
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <small class="text-muted">
+                        Showing {{ $documents->firstItem() }} to {{ $documents->lastItem() }} of {{ $documents->total() }} documents
+                    </small>
+                    <div class="d-flex justify-content-center justify-content-md-end">
+                        {{ $documents->links() }}
+                    </div>
                 </div>
             @endif
         </div>

@@ -42,6 +42,14 @@ class UniversityController extends Controller
             ->with('success', 'University created successfully.');
     }
     
+    public function show(University $university)
+    {
+        // Load university with related data
+        $university->load(['country', 'state', 'courses']);
+        
+        return view('admin.university.show', compact('university'));
+    }
+    
     public function edit(University $university)
     {
         $countries = Country::all();

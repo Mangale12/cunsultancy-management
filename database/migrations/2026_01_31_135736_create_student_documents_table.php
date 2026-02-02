@@ -11,21 +11,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-
-        Schema::create('document_types', function (Blueprint $table) {
-            $table->id();
-            $table->string('key')->unique();
-            $table->string('label');
-            $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->boolean('is_required')->default(false);
-            $table->integer('sort_order')->default(0);
-            $table->json('allowed_extensions')->nullable();
-            $table->integer('max_file_size')->default(10240); // in KB (10MB default)
-            $table->timestamps();
-            $table->softDeletes();
-        });
-        
         Schema::create('student_documents', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_id')->constrained()->onDelete('cascade');
@@ -54,6 +39,5 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('student_documents');
-        // Schema::dropIfExists('document_types');
     }
 };

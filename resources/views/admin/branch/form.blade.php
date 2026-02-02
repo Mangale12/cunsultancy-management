@@ -19,8 +19,13 @@
                         <input type="text" name="name" class="form-control" value="{{ old('name', $branch->name ?? '') }}" required>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Branch Code</label>
-                        <input type="text" name="code" class="form-control" value="{{ old('code', $branch->code ?? '') }}">
+                        <label class="form-label">Branch Code <span class="text-danger">*</span></label>
+                        <input type="text" name="code" class="form-control @error('code') is-invalid @enderror" 
+                               value="{{ old('code', $branch->code ?? '') }}" 
+                               placeholder="Enter branch code" required>
+                        @error('code')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Manager Name</label>

@@ -102,8 +102,6 @@ export default function IntakeEdit() {
                         </div>
                     </form>
                 </Card>
-                    </Card>
-                </form>
             </div>
         </>
     );

@@ -69,8 +69,9 @@ class StudentController extends Controller
         $branches = Branch::all();
         $agents = Agent::all();
         $courses = Course::all();
+        $states = State::all();
         
-        return view('admin.student.form', compact('student', 'countries', 'branches', 'agents', 'courses'));
+        return view('admin.student.form', compact('student', 'countries', 'branches', 'agents', 'courses', 'states'));
     }
 
     public function update(Request $request, Student $student)

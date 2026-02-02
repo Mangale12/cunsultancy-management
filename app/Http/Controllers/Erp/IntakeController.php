@@ -17,7 +17,7 @@ class IntakeController extends Controller
     }
 
     public function create(){
-        return view('admin.intake.create');
+        return view('admin.intake.form');
     }
 
     public function store(Request $request){
@@ -33,7 +33,7 @@ class IntakeController extends Controller
             DB::commit();
             
             return redirect()
-                ->route('intake.index')
+                ->route('intakes.index')
                 ->with('success', 'Intake created successfully.');
                 
         } catch (\Exception $e) {
@@ -47,7 +47,7 @@ class IntakeController extends Controller
     }
 
     public function edit(Intake $intake){
-        return view('admin.intake.edit', compact('intake'));
+        return view('admin.intake.form', compact('intake'));
     }
 
     public function update(Request $request, Intake $intake){
@@ -63,7 +63,7 @@ class IntakeController extends Controller
             DB::commit();
             
             return redirect()
-                ->route('intake.index')
+                ->route('intakes.index')
                 ->with('success', 'Intake updated successfully.');
                 
         } catch (\Exception $e) {

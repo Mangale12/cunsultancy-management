@@ -40,7 +40,7 @@ class StateController extends Controller
     public function edit(State $state)
     {
         $countries = Country::all();
-        return view('admin.states.edit', compact('state', 'countries'));
+        return view('admin.states.form', compact('state', 'countries'));
     }
 
     public function update(StateUpdateRequest $request, State $state): RedirectResponse
@@ -54,6 +54,14 @@ class StateController extends Controller
     {
         $state->delete();
         return redirect()->route('states.index')->with('success', 'State deleted successfully.');
+    }
+
+    public function show(State $state)
+    {
+        // Load state with related data
+        $state->load(['country', 'students']);
+        
+        return view('admin.states.show', compact('state'));
     }
     // public function index(Request $request): Response
     // {

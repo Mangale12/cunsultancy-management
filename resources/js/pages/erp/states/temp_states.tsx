@@ -208,3 +208,5 @@ export default function StatesIndex({ states, filters }: Props) {
                 </Card>
             </div>
         </AppLayout>
+    );
+}

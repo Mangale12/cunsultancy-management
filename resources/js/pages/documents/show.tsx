@@ -291,10 +291,8 @@ export default function DocumentShow({ document }: { document: Document }) {
                                     <h3 className="text-lg font-semibold mb-4">Student Information</h3>
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-3">
-                                            <User className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-                                                <span className="text-blue-600 text-sm font-medium">
-                                                    {document.student.first_name.charAt(0)}
-                                                </span>
+                                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                                <User className="h-4 w-4 text-blue-600" />
                                             </div>
                                             <div>
                                                 <p className="font-medium">

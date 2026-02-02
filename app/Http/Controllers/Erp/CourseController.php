@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\University;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -71,6 +72,39 @@ class CourseController extends Controller
         $course->update($validated);
 
         return redirect()->route('courses.index')->with('success', 'Course updated successfully.');
+    }
+
+    public function show(Course $course)
+    {
+        // Load course with related data
+        $course->load(['university']);
+        
+        return view('admin.course.show', compact('course'));
+    }
+
+    public function destroy(Course $course)
+    {
+        try {
+            // Check if course has students
+            if ($course->students()->exists()) {
+                return back()
+                    ->with('error', 'Cannot delete course. It has associated students.');
+            }
+
+            // Delete course image if exists
+            if ($course->image_path) {
+                Storage::disk('public')->delete($course->image_path);
+            }
+
+            $course->delete();
+
+            return redirect()
+                ->route('courses.index')
+                ->with('success', 'Course deleted successfully');
+        } catch (\Exception $e) {
+            return back()
+                ->with('error', 'Failed to delete course. Please try again.');
+        }
     }
     // public function index(Request $request): Response
     // {

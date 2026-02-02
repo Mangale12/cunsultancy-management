@@ -3,7 +3,7 @@ import { Table } from "@tanstack/react-table"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Cross2 } from "lucide-react"
+import { X } from "lucide-react"
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -34,7 +34,7 @@ export function DataTableToolbar<TData>({
             className="h-8 px-2 lg:px-3"
           >
             Reset
-            <Cross2 className="ml-2 h-4 w-4" />
+            <X className="ml-2 h-4 w-4" />
           </Button>
         )}
       </div>
