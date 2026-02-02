@@ -198,9 +198,9 @@
                     <tr>
                         <td class="ps-2">{{ $key + 1 }}.</td>
                         <td>{{ $doc->title }}</td>
-                        <td><a href="#" class="text-primary text-decoration-none">Preview</a></td>
+                        <td><a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="text-primary text-decoration-none">Preview</a></td>
                         <td class="text-muted">{{ $doc->file_name }}</td>
-                        <td><a href="#" class="text-primary text-decoration-none">Download</a></td>
+                        <td><a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="text-primary text-decoration-none">Download</a></td>
                         <td>{{ $doc->created_at }}</td>
                     </tr>
                     @endforeach

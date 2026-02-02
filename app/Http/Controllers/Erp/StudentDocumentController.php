@@ -47,14 +47,12 @@ class StudentDocumentController extends Controller
      */
     public function store(Request $request, Student $student)
     {
-        dd($request->all());
         $validated = $request->validate([
             'document_type' => ['required', 'string', 'max:50'],
             'title' => ['required', 'string', 'max:255'],
             'document' => ['required', 'file', 'max:10240'], // 10MB max
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
-
         try {
             $file = $request->file('document');
             $originalName = $file->getClientOriginalName();
