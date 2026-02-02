@@ -76,7 +76,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Route::resource('student-applications', StudentApplicationController::class);
     // Route::get('/students/{student}/apply', [StudentApplicationController::class, 'create'])->name('students.apply');
     // Route::resource('documents', DocumentController::class);
-    // Route::resource('document-types', DocumentTypeController::class);
+    Route::resource('document-types', DocumentTypeController::class);
     
     // // Document specific routes
     // Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');

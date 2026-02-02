@@ -17,6 +17,7 @@ use App\Models\Intake;
 use App\Models\ApplicationYear;
 use App\Models\DocumentType;
 use App\Models\StudentDocument;
+use Illuminate\Support\Facades\DB;
 
 class StudentController extends Controller
 {
@@ -63,6 +64,12 @@ class StudentController extends Controller
         return redirect()->route('students.index')->with('success', 'Student registered successfully.');
     }
 
+    public function destroy(Student $student)
+    {
+        $student->delete();
+        return back()->with('success', 'Student deleted.');
+    }
+
     public function edit(Student $student)
     {
         $countries = Country::all();
@@ -98,6 +105,10 @@ class StudentController extends Controller
         $courses = Course::all();
         $intakes = Intake::all();
         $applicationYears = ApplicationYear::all();
+        $documentTypes = DocumentType::all();
+        
+        // Load student with documents
+        $student->load(['documents.documentType']);
         $documentTypes = DocumentType::all();
         $student->load(['branch', 'agent', 'course', 'country', 'state']);
         return view('admin.student.show', compact('student', 'universities', 'courses', 'intakes', 'applicationYears', 'documentTypes'));
@@ -156,24 +167,85 @@ class StudentController extends Controller
         return view('admin.student.application', compact('student', 'universities'));
     }
 
+    /**
+     * Handle document upload for a student
+     */
     public function uploadDocument(Request $request, Student $student)
     {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'document_type_id' => 'required|exists:document_types,id',
-            'document_file' => 'required|file|mimes:pdf,doc,docx|max:2048',
+        $request->validate([
+            'documents' => 'required_without:bulk_documents|array',
+            'documents.*.title' => 'required_with:documents|string|max:255',
+            'documents.*.document_type_id' => 'required_with:documents|exists:document_types,id',
+            'documents.*.file' => 'required_with:documents|file|max:10240', 
+            'documents.*.expiry_date' => 'nullable|date',
+            'documents.*.notes' => 'nullable|string',
+            'bulk_documents' => 'nullable|array',
+            'bulk_documents.*' => 'file|max:10240',
         ]);
-
-        StudentDocument::create([
-            'student_id' => $student->id,
-            'title' => $validated['title'],
-            'file_name' => $validated['title'],
-            'document_type_id' => $validated['document_type_id'],
-            'file_path' => $request->file('document_file')->store('student_documents', 'public'),
-            'notes' => $validated['notes'] ?? null,
-        ]);
-
-        return redirect()->route('students.show', $student->id)
-            ->with('success', 'Document uploaded successfully!');
+    
+        DB::beginTransaction();
+    
+        try {
+            // 1. Handle Individual Document Uploads
+            if ($request->has('documents')) {
+                foreach ($request->input('documents') as $index => $docData) {
+                    if ($request->hasFile("documents.$index.file")) {
+                        $file = $request->file("documents.$index.file");
+                        $path = $file->store('documents/students/' . $student->id, 'public');
+                        
+                        $student->documents()->create([
+                            'title' => $docData['title'],
+                            'document_type_id' => $docData['document_type_id'],
+                            'file_path' => $path,
+                            'file_name' => $file->getClientOriginalName(),
+                            'file_size' => $file->getSize(),
+                            'mime_type' => $file->getClientMimeType(),
+                            'expiry_date' => $docData['expiry_date'] ?? null,
+                            'notes' => $docData['notes'] ?? null,
+                            'uploaded_by' => auth()->id(),
+                        ]);
+                    }
+                }
+            }
+    
+            // 2. Handle Bulk Document Uploads
+            if ($request->hasFile('bulk_documents')) {
+                $defaultType = DocumentType::where('status', 'active')->first();
+                
+                foreach ($request->file('bulk_documents') as $file) {
+                    $path = $file->store('documents/students/' . $student->id . '/bulk', 'public');
+                    
+                    $student->documents()->create([
+                        'title' => pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME),
+                        'document_type_id' => $defaultType ? $defaultType->id : null,
+                        'file_path' => $path,
+                        'file_name' => $file->getClientOriginalName(),
+                        'file_size' => $file->getSize(),
+                        'mime_type' => $file->getClientMimeType(),
+                        'uploaded_by' => auth()->id(),
+                        'notes' => 'Bulk uploaded file',
+                    ]);
+                }
+            }
+    
+            DB::commit();
+    
+            $message = 'Documents uploaded successfully!';
+            return $request->wantsJson() 
+                ? response()->json(['success' => true, 'message' => $message, 'redirect' => route('students.show', $student->id)])
+                : redirect()->route('students.show', $student->id)->with('success', $message);
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            // Delete uploaded files if DB failed
+            Storage::disk('public')->deleteDirectory('documents/students/' . $student->id . '/temp');
+    
+            Log::error('Upload Error: ' . $e->getMessage());
+    
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => 'Upload failed: ' . $e->getMessage()], 500)
+                : back()->with('error', 'Error: ' . $e->getMessage());
+        }
     }
 }

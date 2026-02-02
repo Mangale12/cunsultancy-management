@@ -8,9 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('countries', function (Blueprint $table) {
-            $table->string('image_path')->nullable()->after('phone_code');
-        });
+       
 
         Schema::table('states', function (Blueprint $table) {
             $table->string('image_path')->nullable()->after('code');
@@ -71,8 +69,5 @@ return new class extends Migration
             $table->dropColumn('image_path');
         });
 
-        Schema::table('countries', function (Blueprint $table) {
-            $table->dropColumn('image_path');
-        });
     }
 };

@@ -536,55 +536,164 @@
 </div>
 
 <!-- Upload Document Modal -->
-<div class="modal fade" id="uploadDocumentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
+<style>
+    /* Full width modal styles */
+    .modal-document-upload .modal-dialog {
+        max-width: 98%;
+        margin: 1rem auto;
+        height: calc(100% - 2rem);
+    }
+    .modal-document-upload .modal-content {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        border: none;
+        border-radius: 0.5rem;
+    }
+    .modal-document-upload .modal-body {
+        overflow-y: auto;
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+    }
+    .document-upload-item {
+        transition: all 0.3s ease;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        background: white;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+    }
+    .document-upload-item:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    }
+    .document-upload-item:last-child {
+        margin-bottom: 0;
+    }
+    .form-control, .form-select {
+        border-radius: 0.375rem;
+    }
+    .btn-sm {
+        border-radius: 0.25rem;
+    }
+</style>
+
+<div class="modal fade modal-document-upload" id="uploadDocumentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-fullscreen-lg-down modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h6 class="modal-title text-primary fw-bold">Upload Student Document</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header bg-primary text-white sticky-top">
+                <h6 class="modal-title fw-bold mb-0">
+                    <i data-feather="upload" class="feather-18 me-2"></i>
+                    Upload Student Documents
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="documentUploadForm" method="POST" action="{{ route('students.upload-document', $student->id) }}" enctype="multipart/form-data">
+            <form id="documentUploadForm" method="POST" action="{{ route('students.upload-document', $student->id) }}" enctype="multipart/form-data" class="d-flex flex-column h-100">
                 @csrf
-                <div id="uploadAlert" class="alert d-none"></div>
-                
-                <input type="hidden" name="student_id" value="{{ $student->id }}">
-                
-                <div class="row">
-                    <div class="col-md-6">
+                <div class="modal-body p-4">
+                    <div id="uploadAlert" class="alert d-none mb-4"></div>
+                    
+                    <input type="hidden" name="student_id" value="{{ $student->id }}">
+                    
+                    <div id="document-uploads" class="mb-4">
+                        <div class="document-upload-item p-4 mb-4">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Document Title <span class="text-danger">*</span></label>
+                                    <input type="text" name="documents[0][title]" class="form-control form-control-sm" placeholder="e.g. Passport Copy" required>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Document Type <span class="text-danger">*</span></label>
+                                    <select class="form-select form-select-sm" name="documents[0][document_type_id]" required>
+                                        <option value="" selected disabled>Select Type</option>
+                                        @foreach($documentTypes as $documentType)
+                                            <option value="{{ $documentType->id }}">{{ $documentType->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-danger remove-document mt-4 w-100" style="display: none;">
+                                    <i data-feather="trash-2" class="feather-14"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Document File <span class="text-danger">*</span></label>
+                                    <input type="file" name="documents[0][file]" class="form-control form-control-sm" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-bold">Expiry Date</label>
+                                    <input type="date" name="documents[0][expiry_date]" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                        </div>
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Document Title <span class="text-danger">*</span></label>
-                            <input type="text" name="title" class="form-control form-control-sm" placeholder="e.g. Passport Copy" required>
+                            <label class="form-label small fw-bold">Notes (Optional)</label>
+                            <textarea name="documents[0][notes]" class="form-control form-control-sm" rows="2" placeholder="Any details about this file..."></textarea>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Document Type <span class="text-danger">*</span></label>
-                            <select class="form-select form-select-sm" name="document_type_id" required>
-                                <option value="" selected disabled>Select Type</option>
-                               @foreach($documentTypes as $documentType)
-                                    <option value="{{ $documentType->id }}">{{ $documentType->label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
                 </div>
-
-               <div class="mb-3">
-                    <label class="form-label small fw-bold">Document File <span class="text-danger">*</span></label>
-                    <input type="file" name="document_file" class="form-control form-control-sm" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Notes (Optional)</label>
-                    <textarea name="notes" class="form-control form-control-sm" rows="3" placeholder="Any details about this file..."></textarea>
-                </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm px-4" id="uploadBtn">
-                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                        <span class="btn-text">Upload Document</span>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-another-doc">
+                        <i data-feather="plus" class="feather-14 me-1"></i> Add Another Document
                     </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="bulk-upload-toggle">
+                        <i data-feather="upload" class="feather-14 me-1"></i> Bulk Upload
+                    </button>
+                </div>
+                <div id="bulk-upload-section" class="mb-3" style="display: none;">
+                    <label class="form-label small fw-bold">Bulk Upload Documents</label>
+                    <input type="file" name="bulk_documents[]" class="form-control form-control-sm" multiple>
+                    <small class="text-muted">You can select multiple files. Files will be uploaded with default settings.</small>
+                </div>
+                        </div>
+                    </div>
+                    
+                    <div class="px-3">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="add-another-doc">
+                                <i data-feather="plus" class="feather-14 me-1"></i> Add Another Document
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="bulk-upload-toggle">
+                                <i data-feather="upload" class="feather-14 me-1"></i> Bulk Upload
+                            </button>
+                        </div>
+                        
+                        <div id="bulk-upload-section" class="mb-3" style="display: none;">
+                            <div class="card border">
+                                <div class="card-body p-3">
+                                    <label class="form-label small fw-bold">Bulk Upload Documents</label>
+                                    <input type="file" name="bulk_documents[]" class="form-control form-control-sm" multiple>
+                                    <small class="text-muted">You can select multiple files. Files will be uploaded with default settings.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer bg-light border-top py-3">
+                    <div class="container-fluid">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+                                    <i data-feather="x" class="feather-16 me-1"></i> Cancel
+                                </button>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-primary px-4" id="uploadBtn">
+                                    <span class="spinner-border spinner-border-sm d-none me-1" role="status" aria-hidden="true"></span>
+                                    <i data-feather="upload" class="feather-16 me-1"></i>
+                                    <span class="btn-text">Upload Documents</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -598,6 +707,108 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Feather Icons
     feather.replace();
+
+    // Document upload counter
+    let docCounter = 1;
+
+    // Add another document field
+    document.getElementById('add-another-doc').addEventListener('click', function() {
+        const newDocItem = document.querySelector('.document-upload-item').cloneNode(true);
+        const newIndex = docCounter++;
+        
+        // Update all names and IDs
+        newDocItem.querySelectorAll('[name^="documents[0]"]').forEach(el => {
+            const newName = el.name.replace('documents[0]', `documents[${newIndex}]`);
+            el.name = newName;
+            el.value = '';
+            el.required = true;
+            
+            // Reset file input
+            if (el.type === 'file') {
+                el.value = '';
+            }
+            
+            // Reset select to first option
+            if (el.tagName === 'SELECT') {
+                el.selectedIndex = 0;
+            }
+        });
+        
+        // Show remove button for all but the first item
+        newDocItem.querySelector('.remove-document').style.display = 'block';
+        
+        // Add remove functionality
+        newDocItem.querySelector('.remove-document').addEventListener('click', function() {
+            this.closest('.document-upload-item').remove();
+        });
+        
+        document.getElementById('document-uploads').appendChild(newDocItem);
+        feather.replace();
+    });
+    
+    // Toggle bulk upload section
+    document.getElementById('bulk-upload-toggle').addEventListener('click', function() {
+        const bulkSection = document.getElementById('bulk-upload-section');
+        const isBulk = bulkSection.style.display === 'block';
+        bulkSection.style.display = isBulk ? 'none' : 'block';
+        this.innerHTML = `<i data-feather="${isBulk ? 'upload' : 'x'}" class="feather-14 me-1"></i> ${isBulk ? 'Bulk Upload' : 'Cancel Bulk Upload'}`;
+        feather.replace();
+    });
+    
+    // Form submission handling
+    document.getElementById('documentUploadForm').addEventListener('submit', function(e) {
+        const form = this;
+        const uploadBtn = form.querySelector('#uploadBtn');
+        const btnText = uploadBtn.querySelector('.btn-text');
+        const spinner = uploadBtn.querySelector('.spinner-border');
+        
+        // Show loading state
+        uploadBtn.disabled = true;
+        btnText.textContent = 'Uploading...';
+        spinner.classList.remove('d-none');
+        
+        // Handle form submission via AJAX
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Show success message
+            const alert = document.getElementById('uploadAlert');
+            alert.className = 'alert alert-success';
+            alert.textContent = data.message || 'Documents uploaded successfully!';
+            alert.classList.remove('d-none');
+            
+            // Reset form if successful
+            if (data.success) {
+                form.reset();
+                // Reload the page to show new documents
+                setTimeout(() => window.location.reload(), 1500);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const alert = document.getElementById('uploadAlert');
+            alert.className = 'alert alert-danger';
+            alert.textContent = 'An error occurred while uploading documents. Please try again.';
+            alert.classList.remove('d-none');
+        })
+        .finally(() => {
+            // Reset button state
+            uploadBtn.disabled = false;
+            btnText.textContent = 'Upload Document';
+            spinner.classList.add('d-none');
+        });
+    });
     
     // When University is selected in the modal
     $('#modal_university').on('change', function() {

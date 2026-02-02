@@ -8,17 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('countries', function (Blueprint $table) {
-            // Drop the code column
-            $table->dropColumn('code');
-        });
+        
     }
 
     public function down(): void
     {
-        Schema::table('countries', function (Blueprint $table) {
-            // Add back the code column
-            $table->string('code')->unique()->after('name');
-        });
+        
     }
 };

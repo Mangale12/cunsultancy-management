@@ -11,12 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('countries', function (Blueprint $table) {
-            $table->string('code', 3)->nullable()->after('name');
-            $table->string('currency', 10)->nullable()->after('code');
-            $table->string('phone_code', 10)->nullable()->after('currency');
-            $table->boolean('is_active')->default(true)->after('phone_code');
-        });
+        
     }
 
     /**
@@ -24,8 +19,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('countries', function (Blueprint $table) {
-            $table->dropColumn(['code', 'currency', 'phone_code', 'is_active']);
-        });
+        
     }
 };
